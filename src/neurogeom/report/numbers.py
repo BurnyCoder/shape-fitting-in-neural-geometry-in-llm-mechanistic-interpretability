@@ -264,7 +264,30 @@ def headline(a: dict) -> str:
                           + " are expected to be non-helix shapes, so the rule is necessary, not sufficient." if wrong else "."))
     if a.get("ci_method"):
         out.append(f"- **Error bars:** 95% {a['ci_method']}, because clouds generated together share N and the R^D-embedding draw.")
+    dc = ph.get("design_checks", {})
+    if "stratified_ci" in dc and "refinement_by_coarse" in dc and "chamfer_floor" in dc:
+        st, rb, fl = dc["stratified_ci"], dc["refinement_by_coarse"], floor_summary(dc["chamfer_floor"])
+        ci = lambda t, pct=False: f"[{100 * t[1]:.1f}, {100 * t[2]:.1f}]" if pct else f"[{t[1]:.4f}, {t[2]:.4f}]"
+        names = {"0d": "point sets", "1d": "curves", "2d": "surfaces", "3d": "blobs"}
+        out.append(f"- **Audit 2026-11-22 (post hoc):** (i) resampling chunks within their family x N-bin x noise-bin stratum, as the test "
+                   f"design fixes them, gives narrower full-test-set CIs (method accuracy {ci(st['method_fine_acc'], True)}, median Chamfer "
+                   f"{ci(st['method_median_chamfer'])}, H5b {ci(st['H5b_median_chamfer_diff'])}), so the reported cluster-bootstrap CIs are "
+                   f"conservative. (ii) By the true family's dimension, refinement changes the median Chamfer distance by "
+                   + ", ".join(f"{v['median_chamfer_diff'][0]:+.4f} {ci(v['median_chamfer_diff'])} ({names[k]})" for k, v in rb.items())
+                   + f". (iii) The Chamfer metric has a grid floor: an evaluation sampling against a 16x denser sampling of the same shape "
+                   f"scores at most {fl['curve_max']:.3f} for curves but {fl['surface_min']:.3f}-{fl['surface_max']:.3f} for surfaces, and two "
+                   f"equivalent parameterisations of a {fl['sym_families']} score up to {fl['sym_max']:.3f}.")
     return "\n".join(out)
+
+
+def floor_summary(fl: dict) -> dict:
+    """Ranges of the Chamfer discretisation floor (eval/metrics.py, chamfer_floor) for the headline and the paper."""
+    vf = lambda c: [v["vs_fine"] for v in fl.values() if v["coarse"] == c]
+    sym = {k: v["vs_symmetric"] for k, v in fl.items() if v["vs_symmetric"] is not None and v["vs_symmetric"] > 0.01}
+    fams = sorted(sym)
+    return {"curve_max": max(vf("1d")), "surface_min": min(vf("2d")), "surface_max": max(vf("2d")),
+            "sym_max": max(sym.values()) if sym else 0.0,
+            "sym_families": (", ".join(fams[:-1]) + " or " + fams[-1]) if len(fams) > 1 else (fams[0] if fams else "none")}
 
 
 def _tex_escape(t: str) -> str:
@@ -422,6 +445,23 @@ def tex_macros(analysis: dict) -> str:
             mac("hfourPreregN", str(h4["C2_prereg_n_posthoc"]))
     if analysis.get("ci_method"):
         mac("ciMethod", analysis["ci_method"])
+    dc = ph.get("design_checks", {})                                # post-hoc checks of the 2026-11-22 audit
+    if "chamfer_floor" in dc:
+        fl = floor_summary(dc["chamfer_floor"])
+        for k, tag in (("curve_max", "CurveMax"), ("surface_min", "SurfMin"), ("surface_max", "SurfMax"), ("sym_max", "SymMax")):
+            mac(f"floor{tag}", f"{fl[k]:.3f}")
+        mac("floorSymFams", fl["sym_families"])
+    if "stratified_ci" in dc:
+        st = dc["stratified_ci"]
+        mac("accCIMethodStrat", f"[{100 * st['method_fine_acc'][1]:.1f}, {100 * st['method_fine_acc'][2]:.1f}]")
+        mac("cdCIMethodStrat", f"[{st['method_median_chamfer'][1]:.3f}, {st['method_median_chamfer'][2]:.3f}]")
+        mac("ciHfivebStrat", f"[{st['H5b_median_chamfer_diff'][1]:.4f}, {st['H5b_median_chamfer_diff'][2]:.4f}]")
+    for k, tag in (("0d", "Point"), ("1d", "Curve"), ("2d", "Surface"), ("3d", "Blob")):
+        v = dc.get("refinement_by_coarse", {}).get(k)
+        if v:
+            d = v["median_chamfer_diff"]
+            mac(f"refineDiff{tag}", f"{d[0]:+.3f}")
+            mac(f"refineCI{tag}", f"[{d[1]:.3f}, {d[2]:.3f}]")
     return "\n".join(lines) + "\n"
 
 

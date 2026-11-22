@@ -117,6 +117,36 @@ def test_cluster_ci_is_wider_than_iid_ci_for_clustered_data():
     assert wilcoxon_p(a + rng.normal(0, 0.01, len(a)), b, groups=groups) < 1e-6   # test on 40 per-cluster mean differences
 
 
+# ---------------------------------------------------------------- design checks (post hoc, audit 2026-11-22)
+def test_stratified_cluster_bootstrap_keeps_whole_groups_and_groups_per_stratum():
+    groups = np.repeat(np.arange(6), 3)                                   # 6 groups of 3 samples
+    strata = np.repeat(np.array([0, 0, 1, 1, 1, 2]), 3)                   # strata hold 2, 3 and 1 groups
+    draw = _sampler(len(groups), groups, np.random.default_rng(0), strata)
+    for _ in range(20):
+        idx = draw()
+        assert np.bincount(strata[idx], minlength=3).tolist() == [6, 9, 3]   # the design's group count per stratum
+        assert all(c % 3 == 0 for c in np.bincount(groups[idx], minlength=6))  # every group enters whole
+        assert set(groups[idx][strata[idx] == 2]) == {5}                  # a one-group stratum always returns that group
+
+
+def test_stratified_ci_is_narrower_than_collapsed_ci_when_stratum_means_differ():
+    rng = np.random.default_rng(1)
+    strata, groups = np.repeat(np.arange(10), 50), np.repeat(np.arange(100), 5)   # 10 strata x 10 groups x 5 samples
+    v = strata + 0.1 * rng.normal(size=500)                               # large fixed differences between strata
+    width = lambda t: t[2] - t[1]
+    assert width(bootstrap_ci(v, reps=400, groups=groups, strata=strata)) < 0.5 * width(bootstrap_ci(v, reps=400, groups=groups))
+
+
+def test_chamfer_floor_is_negligible_for_curves_but_not_for_surface_grids():
+    from neurogeom.eval.metrics import chamfer_floor
+    fl = chamfer_floor(n_shapes=8)
+    assert set(fl) == {"line", "arc", "ellipse", "helix", "ringing", "disc", "sphere", "paraboloid", "cone", "torus"}
+    assert max(v["vs_fine"] for v in fl.values() if v["coarse"] == "1d") < 0.03
+    assert min(v["vs_fine"] for v in fl.values() if v["coarse"] == "2d") > 0.05
+    assert fl["arc"]["vs_symmetric"] < 1e-3            # a reversed arc maps the midpoint grid onto itself
+    assert fl["sphere"]["vs_symmetric"] > 0.02         # a sphere rotated about its pole does not
+
+
 # ---------------------------------------------------------------- B1-fixed (post hoc, audit 2026-11-14)
 def _unit(name, **spec):
     """A unit, axis-aligned, origin-centred instance of a posed family with the given intrinsic parameters."""

@@ -1,13 +1,13 @@
 # Fitting geometric shapes to neural geometry
 
 **Status:** first trained model (`main_s0`) evaluated with its controls and baselines. Postponed to later stages: trained ablations, more models, and seed and hyperparameter sweeps ([deviations](reports/deviations.md)).
-**Links:** [paper (PDF)](paper/main.pdf) · [interactive explorer](https://burnycoder.github.io/geometrical-shape-fitting-in-llm-mechanistic-interpretability/) · [model on Hugging Face](https://huggingface.co/BurnyCoder/neurogeom-shape-fitter-main-s0) · [summary of all experiments](reports/summary.md)
+**Links:** [paper (PDF)](paper/main.pdf) · [interactive explorer](https://burnycoder.github.io/shape-fitting-in-neural-geometry-in-llm-mechanistic-interpretability/) · [model on Hugging Face](https://huggingface.co/BurnyCoder/neurogeom-shape-fitter-main-s0) · [summary of all experiments](reports/summary.md)
 
 Interpretability research keeps finding **low-dimensional shapes** in the activations of neural networks:
 - circles for weekdays and months ([Engels et al. 2024](https://arxiv.org/abs/2405.14860));
 - a helix in GPT-2's positional embeddings ([Yedidia 2023](https://www.lesswrong.com/posts/qvWP3aBDBaqXvPNhS/gpt-2-s-positional-embedding-matrix-is-a-helix));
 - a helix-like manifold for character counts ([Gurnee et al. 2025](https://transformer-circuits.pub/2025/linebreaks/index.html));
-- a paraboloid for colors, a helix for years, and lines for temperature and age ([Bhalla et al. 2026](https://arxiv.org/abs/2604.28119));
+- a paraboloid for colors, a helix for years, and lines for temperature and age, as labelled in the dataset table of [Bhalla et al. 2026](https://arxiv.org/abs/2604.28119) (in their 3D PCA views temperature and age are bent curves and years a broad cloud);
 - circles of token embeddings in grokked modular addition ([Nanda et al. 2023](https://arxiv.org/abs/2301.05217); "clock" in [Zhong et al. 2023](https://arxiv.org/abs/2306.17844));
 - uniform polytopes in toy models of superposition ([Elhage et al. 2022](https://transformer-circuits.pub/2022/toy_model/index.html)).
 
@@ -38,6 +38,7 @@ The hypotheses, metrics and falsification criteria were preregistered before any
 - **H4, controls:** matched-covariance Gaussians are labelled blob 86% of the time (mean over all 17 real datasets, exploratory ones included); ordinal-process controls ringing 60% vs helix 40%: supported (mean criterion); 10/12 preregistered datasets reach 80%. Post hoc: smooth Gaussian processes alone are labelled helix in 80%, random walks in 0%.
 - **Helix rule (post hoc, every full-cloud helix fit with held-out folds):** the preregistered two-part rule rejects the helix claim for `C1_gp_0` and accepts it for `R2_grokking_WE`, `R5a_llama_weekdays`, `R5b_llama_months`, `R5b_llama_months_means`, all of which are expected to be non-helix shapes, so the rule is necessary, not sufficient.
 - **Error bars:** 95% cluster bootstrap over generator chunks of 25 clouds (audit 2026-11-14), because clouds generated together share N and the R^D-embedding draw.
+- **Audit 2026-11-22 (post hoc):** (i) resampling chunks within their family x N-bin x noise-bin stratum, as the test design fixes them, gives narrower full-test-set CIs (method accuracy [87.4, 88.3], median Chamfer [0.1540, 0.1580], H5b [-0.0048, -0.0020]), so the reported cluster-bootstrap CIs are conservative. (ii) By the true family's dimension, refinement changes the median Chamfer distance by -0.0088 [-0.0176, -0.0010] (point sets), -0.0112 [-0.0143, -0.0079] (curves), -0.0100 [-0.0117, -0.0081] (surfaces), +0.0331 [0.0252, 0.0434] (blobs). (iii) The Chamfer metric has a grid floor: an evaluation sampling against a 16x denser sampling of the same shape scores at most 0.010 for curves but 0.090-0.101 for surfaces, and two equivalent parameterisations of a cone, sphere or torus score up to 0.081.
 <!-- END:headline -->
 
 **In plain words.**
@@ -161,13 +162,13 @@ flowchart LR
 | `blob` | Gaussian: center, axes, σ1≥σ2≥σ3 | Null class for controls |
 | `clusters` | k = 2..6 centroids sorted by PC1, spread | True vs. false statements separating in the top-2 PCs ([Marks & Tegmark](https://arxiv.org/abs/2310.06824)) |
 | `polytope` | Template (regular triangle, square, pentagon, tetrahedron, octahedron, or the uniform square antiprism), center, circumradius, vertices sorted by PC1 | Uniform polytopes of features in superposition ([Elhage et al.](https://transformer-circuits.pub/2022/toy_model/index.html)) |
-| `line` | Endpoints | Temperature, age ([Bhalla et al.](https://arxiv.org/abs/2604.28119)) |
+| `line` | Endpoints | Temperature, age: Table 1 labels of [Bhalla et al.](https://arxiv.org/abs/2604.28119), whose PCA views show bent curves |
 | `arc` | Center, normal, radius, extent (closed circle when the extent is 2π) | Days, months ([Engels et al.](https://arxiv.org/abs/2405.14860)), grokked embeddings ([Nanda et al.](https://arxiv.org/abs/2301.05217)) |
 | `ellipse` | Center, normal, major axis, a ≥ b | A linearly distorted circle; no separate empirical anchor |
 | `helix` | Axis, radius, signed pitch, turns, phase | GPT-2 W_pos ([Yedidia](https://www.lesswrong.com/posts/qvWP3aBDBaqXvPNhS/gpt-2-s-positional-embedding-matrix-is-a-helix)), counting ([Gurnee et al.](https://transformer-circuits.pub/2025/linebreaks/index.html)), years ([Bhalla et al.](https://arxiv.org/abs/2604.28119)) |
 | `ringing` | c + Σₖ aₖ cos(kπs) eₖ | The PCA horseshoe artifact, a confounder ([Novembre & Stephens 2008](https://doi.org/10.1038/ng.139)) |
-| `disc` | Filled ellipse | "Pizza": averaged pair embeddings filling the embedding circle in modular addition ([Zhong et al.](https://arxiv.org/abs/2306.17844)) |
-| `sphere` | Center, radius, pole, cap angle | Cities ([Tiblias et al.](https://arxiv.org/abs/2510.01025)); sky positions, not in the top-3 PCs ([Berdnikov & Liokumovich](https://arxiv.org/abs/2607.27092)) |
+| `disc` | Filled ellipse | "Pizza" algorithm in modular addition: averaged pair embeddings lie inside the embedding circle, on lines through its centre ([Zhong et al.](https://arxiv.org/abs/2306.17844)); that they fill a disc is our reading |
+| `sphere` | Center, radius, pole, cap angle | Cities ([Tiblias et al.](https://arxiv.org/abs/2510.01025)); sky positions, mostly in PCs 2–4 rather than cleanly the top 3 ([Berdnikov & Liokumovich](https://arxiv.org/abs/2607.27092)) |
 | `paraboloid` | Frame, κ1 ≥ \|κ2\|, patch radius (bowl, saddle or trough) | Colors ([Bhalla et al.](https://arxiv.org/abs/2604.28119)) |
 | `cone` | Frustum: axis, bottom and top radius, height (covers cylinders) | The "narrow cone" of anisotropic embeddings, a high-dimensional statement rather than a fitted cone surface ([Ethayarajh 2019](https://arxiv.org/abs/1909.00512)) |
 | `torus` | Center, axis, R, r | Grid cells ([Gardner et al. 2022](https://doi.org/10.1038/s41586-021-04268-7)), modular addition ([Moisescu-Pareja et al.](https://arxiv.org/abs/2512.25060)) |
@@ -305,6 +306,7 @@ The full plan and its status are in [reports/plan.md](reports/plan.md).
 - The real-data B1 column with B1-fixed, and an ambiguity tag that does not depend on B1's fits.
 - A B1-fixed variant restricted to k < N clusters. With k ≤ N, geometric AIC picks degenerate one-point-per-cluster fits on the smallest clouds.
 - Next models suggested by the failures: a coverage check, a Fourier-curve family, more cluster centroids, a helix test against circles and clusters, and abstention outside the training distribution.
+- Store each system's predicted parameters per test cloud, and evaluate Chamfer on a finer grid or with the analytic distance (the 24 × 24 surface grid has a floor; [audit of 2026-11-22](reports/reviews/audit-2026-11-22.md)).
 
 ## Technologies
 PyTorch 2.14.1 (pinned, CUDA 13.0 wheels), Hugging Face transformers, NumPy and SciPy, scikit-learn, ripser.py, matplotlib, plotly.js (explorer, loaded from a CDN), uv and pytest.

@@ -9,6 +9,7 @@ This file tracks the project plan and its status. Results live in [summary.md](s
 | 1 | Literature catalog, preregistration, core code, README | done (2026-10-31) |
 | 2 | First model `main_s0`, with the controls and baselines that need no training; paper, reports, site, Hugging Face | done (2026-10-31); fact-checks 2026-11-01 and 2026-11-04 |
 | 2a | Independent soundness audit of stage 2 and its fixes (below) | done (2026-11-15; PR #10) |
+| 2b | Second independent audit (no model runs): recomputation, design checks, fact-check (below) | done (2026-11-22) |
 | 3 | Trained ablations A0, A1, A2, A4, A6 (`bash scripts/sweep.sh ablations`), including H5a | postponed by the author |
 | 4 | Seeds 1–2 and hyperparameter sensitivity (`bash scripts/sweep.sh sensitivity`); hierarchical bootstrap over seeds | postponed by the author |
 | 5 | OOD synthetic set (4D flat torus, two-frequency Fourier circles, multi-period number helix) | postponed |
@@ -38,8 +39,26 @@ This file tracks the project plan and its status. Results live in [summary.md](s
 - [x] Text that depends on the B1-fixed result: interpretation in exp01, the paper's results, abstract and conclusion, the README and the summary.
 - [x] Regenerate the report, site and paper PDF. Publish the Hugging Face card. PR and merge (PR #10, 2026-11-15).
 
-## Open to-do after stage 2a
+## Stage 2b: audit of 2026-11-22
+
+**Question.** Is any methodological error invalidating the findings? Are the hypotheses evaluated correctly, and are methods, definitions and citations used correctly? No model inference or training.
+
+**Findings.** None flips a verdict. The review is in [reviews/audit-2026-11-22.md](reviews/audit-2026-11-22.md); see also the deviations section "Found in the independent audit of 2026-11-22".
+1. The Chamfer metric has a sampling-grid floor for surfaces, of the order of the reported medians.
+2. The pooled H5b effect hides opposite signs: refinement helps point sets, curves and surfaces and hurts blobs.
+3. The cluster-bootstrap CIs are conservative (collapsed strata); a stratified sensitivity check narrows them.
+4. H4's preregistered wording admits a pooled and a per-dataset reading; the paper had claimed the per-dataset one.
+5. Two descriptions of real clouds were wrong (the random-init counting control, the true/false statements), as were one bibliography author order and one year label.
+
+**Fixes.**
+- [x] `scripts/audit_checks.py`: an independent recomputation with sklearn and scipy, plus checks of the real-cloud descriptions. Output: `results/main_s0/audit_2026-11-22.json`.
+- [x] `posthoc.design_checks` in `analysis.json`: stratified cluster bootstrap, refinement by coarse class, Chamfer floor. Unit tests, a headline line and LaTeX macros come with it.
+- [x] Text: paper (statistics, H5b, H4, R9, limitations, date), methodology, exp01, exp02, deviations, bibliography, catalog corrections.
+- [x] Regenerate the report and the paper PDF. PR and merge. Hugging Face card.
+
+## Open to-do after stages 2a and 2b
 - Re-run the real-data B1 column with B1-fixed (currently the preregistered B1).
 - Recompute the ambiguity tag with B1-fixed fits, or with a ground-truth-based definition.
 - A B1-fixed variant with k < N cluster candidates. With k ≤ N, G-AIC picks degenerate one-point-per-cluster fits on the smallest clouds. This would be another post-hoc choice, so if run it must be reported next to the pre-specified B1-fixed.
+- Evaluate the Chamfer metric on a finer grid (needs a re-evaluation with the model), or store predicted parameters so that metrics can be recomputed without the model.
 - Stages 3–6 above.

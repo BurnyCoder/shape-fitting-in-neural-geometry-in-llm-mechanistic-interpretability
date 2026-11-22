@@ -2,7 +2,8 @@
 
 Global context: implements the preregistered analysis plan (reports/preregistration.md, Sec. 5):
 percentile bootstrap CIs (Efron & Tibshirani 1993), optionally over clusters of dependent test clouds
-(cluster bootstrap, added after the 2026-11-14 audit), hierarchical bootstrap over seeds then samples
+(cluster bootstrap, added after the 2026-11-14 audit; a stratified variant is a post-hoc sensitivity check of the
+2026-11-22 audit), hierarchical bootstrap over seeds then samples
 (Saravanan et al. 2020, "Application of the hierarchical bootstrap to multi-level data in
 neuroscience", arXiv:2007.07797), paired bootstrap + Wilcoxon signed-rank tests with Holm's
 step-down correction (Holm 1979), expected calibration error and temperature scaling
@@ -16,20 +17,30 @@ import torch
 from scipy.stats import wilcoxon
 
 
-def _sampler(n: int, groups, rng: np.random.Generator):
+def _sampler(n: int, groups, rng: np.random.Generator, strata=None):
     """Callable that returns one bootstrap index array over n samples.
 
     groups=None: i.i.d. resampling of samples. Otherwise a cluster bootstrap (Davison & Hinkley 1997, Sec. 3.8; Field &
     Welsh 2007, doi:10.1111/j.1467-9868.2007.00593.x): whole groups are drawn with replacement and keep all their
     members. Needed because test clouds are generated in chunks that share N and the R^D-embedding draw
     (data/testsets.py), so clouds of one chunk are not independent (audit 2026-11-14, reports/deviations.md).
+    strata (post hoc, audit 2026-11-22): a stratified cluster bootstrap. Groups are drawn with replacement within their
+    stratum, so every replicate keeps the design's number of groups per stratum (the test set fixes 10 chunks per
+    family x N-bin x noise-bin cell). Resampling groups across strata instead, as the reported CIs do, adds the spread
+    between stratum means to the variance: the collapsed-strata estimator, whose bias is a non-negative sum of squared
+    differences of stratum means (Mosaferi 2015, arXiv:1910.05840, Sec. 3.1; Hansen, Hurwitz & Madow 1953), so those
+    CIs are conservative. Every group must lie in one stratum.
     """
     if groups is None:
         return lambda: rng.integers(0, n, n)
     _, inv = np.unique(np.asarray(groups), return_inverse=True)
     order = np.argsort(inv, kind="stable")                                    # member indices grouped by group id
     members = np.split(order, np.cumsum(np.bincount(inv))[:-1])               # one index array per group
-    return lambda: np.concatenate([members[j] for j in rng.integers(0, len(members), len(members))])
+    if strata is None:
+        return lambda: np.concatenate([members[j] for j in rng.integers(0, len(members), len(members))])
+    _, s_inv = np.unique(np.asarray(strata)[[m[0] for m in members]], return_inverse=True)   # stratum of each group
+    by_stratum = [np.flatnonzero(s_inv == k) for k in range(s_inv.max() + 1)]                # group ids per stratum
+    return lambda: np.concatenate([members[j] for g in by_stratum for j in g[rng.integers(0, len(g), len(g))]])
 
 
 def _pct(boots, alpha: float) -> tuple[float, float]:
@@ -37,10 +48,11 @@ def _pct(boots, alpha: float) -> tuple[float, float]:
     return float(np.quantile(boots, alpha / 2)), float(np.quantile(boots, 1 - alpha / 2))
 
 
-def bootstrap_ci(values, stat=np.mean, reps: int = 2000, seed: int = 0, alpha: float = 0.05, groups=None) -> tuple[float, float, float]:
-    """Percentile bootstrap: (estimate, lower, upper); groups -> cluster bootstrap."""
+def bootstrap_ci(values, stat=np.mean, reps: int = 2000, seed: int = 0, alpha: float = 0.05, groups=None,
+                 strata=None) -> tuple[float, float, float]:
+    """Percentile bootstrap: (estimate, lower, upper); groups -> cluster bootstrap; + strata -> stratified cluster bootstrap."""
     v = np.asarray(values)
-    draw = _sampler(len(v), groups, np.random.default_rng(seed))
+    draw = _sampler(len(v), groups, np.random.default_rng(seed), strata)
     boots = np.array([stat(v[draw()]) for _ in range(reps)])
     return (float(stat(v)), *_pct(boots, alpha))
 
@@ -67,10 +79,12 @@ def macro_f1(y_true, y_pred) -> float:
     return float(np.mean(np.where(denom > 0, 2 * tp / np.maximum(denom, 1), 0.0)))
 
 
-def paired_bootstrap(a, b, stat=np.mean, reps: int = 2000, seed: int = 0, alpha: float = 0.05, groups=None) -> tuple[float, float, float]:
-    """CI of stat(a) - stat(b) with the same resampled indices for both (paired design); groups -> cluster bootstrap."""
+def paired_bootstrap(a, b, stat=np.mean, reps: int = 2000, seed: int = 0, alpha: float = 0.05, groups=None,
+                     strata=None) -> tuple[float, float, float]:
+    """CI of stat(a) - stat(b) with the same resampled indices for both (paired design); groups -> cluster bootstrap;
+    + strata -> stratified cluster bootstrap."""
     a, b = np.asarray(a), np.asarray(b)
-    draw = _sampler(len(a), groups, np.random.default_rng(seed))
+    draw = _sampler(len(a), groups, np.random.default_rng(seed), strata)
     diffs = [stat(a[i]) - stat(b[i]) for i in (draw() for _ in range(reps))]
     return (float(stat(a) - stat(b)), *_pct(diffs, alpha))
 

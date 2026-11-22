@@ -5,7 +5,8 @@ results/<run>/real/real_results.json, and writes results/<run>/analysis.json. Ev
 reports and paper comes from that file via report/numbers.py (no hand-typed numbers).
 Every synthetic CI is a cluster bootstrap over generator chunks (clouds of one chunk share N and the R^D-embedding
 draw; audit 2026-11-14), and Wilcoxon tests use per-chunk mean differences. Post-hoc checks (not preregistered) are
-kept apart under "posthoc" and the "*_posthoc" keys.
+kept apart under "posthoc" and the "*_posthoc" keys; those of the 2026-11-22 audit (stratified cluster bootstrap,
+refinement by coarse class, Chamfer discretisation floor) are under "posthoc" -> "design_checks".
 Comparisons with baselines are paired on the baseline subset (identical samples); comparisons with
 ablations that are separate models (A1, A2, A4, A6) are paired on the fixed method subset that
 scripts/sweep.sh evaluates (eval.method_subset_per_cell = 100 samples per family and cell, same samples
@@ -145,6 +146,39 @@ def posthoc_synth(df: pd.DataFrame, reps: int) -> dict:
     return out
 
 
+def posthoc_design_checks(df: pd.DataFrame, reps: int) -> dict:
+    """Post-hoc checks added by the 2026-11-22 audit (not preregistered, outside the Holm family):
+    - stratified cluster bootstrap of the full-test-set statistics: chunks are resampled within their family x N-bin x
+      noise-bin stratum (10 chunks each), as the test design fixes them. The reported cluster bootstrap resamples chunks
+      across strata, so its CIs also carry the spread between stratum means and are conservative (eval/stats.py,
+      _sampler). In the baseline subset every stratum is a single chunk, so no stratified CI exists there.
+    - refinement (H5b) split by the coarse class of the true family (each chunk holds one family, so every class is a
+      set of whole chunks and the cluster bootstrap applies unchanged);
+    - the discretisation floor of the evaluation Chamfer distance (eval/metrics.py, chamfer_floor)."""
+    from neurogeom.eval.metrics import chamfer_floor
+    from neurogeom.shapes.registry import COARSE, COARSE_NAMES
+    out = {"chamfer_floor": chamfer_floor()}
+    if not {"method", "A3_norefine"} <= set(df.system):
+        return out
+    a = df[df.system == "method"].set_index("sample_id")
+    b = df[df.system == "A3_norefine"].set_index("sample_id").loc[a.index]
+    strata = (a.n_bin.astype(str) + "-" + a.noise_bin.astype(str) + "-" + a.family_true).values
+    out["stratified_ci"] = {
+        "method_fine_acc": bootstrap_ci(a.correct.astype(float).values, reps=reps, groups=a.cluster.values, strata=strata),
+        "method_median_chamfer": bootstrap_ci(a.chamfer.values, stat=np.median, reps=reps, groups=a.cluster.values, strata=strata),
+        "H5b_median_chamfer_diff": paired_bootstrap(a.chamfer.values, b.chamfer.values, stat=np.median, reps=reps,
+                                                    groups=a.cluster.values, strata=strata),
+        "n_strata": int(len(set(strata))), "n_clusters": int(a.cluster.nunique())}
+    coarse = a.family_true.map(lambda f: COARSE_NAMES[COARSE[INDEX[f]]]).values
+    out["refinement_by_coarse"] = {c: {"n": int((coarse == c).sum()),
+                                       "median_chamfer_method": float(np.median(a.chamfer.values[coarse == c])),
+                                       "median_chamfer_A3": float(np.median(b.chamfer.values[coarse == c])),
+                                       "median_chamfer_diff": paired_bootstrap(a.chamfer.values[coarse == c], b.chamfer.values[coarse == c],
+                                                                               stat=np.median, reps=reps, groups=a.cluster.values[coarse == c])}
+                                   for c in COARSE_NAMES if (coarse == c).any()}
+    return out
+
+
 def calibration(res_dir: Path) -> dict | None:
     """ECE (15 bins) and NLL of the classifier on the synthetic test set before (T = 1) and after temperature scaling
     (preregistration Sec. 5.4). probs.npz holds p = softmax(l / T), so l = T log p up to a per-sample constant.
@@ -235,6 +269,7 @@ def run_analysis(cfg: dict, ablation_runs: dict | None = None) -> dict:
            "per_family": per_family(full), "confusion_method": confusion(df, "method"),
            "hypotheses": hypotheses_synth(df, reps, abl), "posthoc": posthoc_synth(df, reps), "calibration": calibration(res_dir),
            "ci_method": f"cluster bootstrap over generator chunks of {CHUNK} clouds (audit 2026-11-14)"}
+    out["posthoc"]["design_checks"] = posthoc_design_checks(df, reps)   # audit 2026-11-22
     tau_p = res_dir / "synth" / "b1_fixed_tau.json"
     if tau_p.exists():   # B1-fixed's blob threshold, fitted on the val stream (eval/synth_eval.py, tune_blob_tau)
         t = json.load(open(tau_p))
