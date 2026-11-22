@@ -3,7 +3,9 @@
 Global context: preregistered metrics (reports/preregistration.md Sec. 4):
 - fine / coarse / acceptable-superset family accuracy (macro-F1 is computed from the per-sample table);
 - Chamfer distance between the predicted shape and the noise-free ground-truth shape (primary
-  geometric metric; symmetric, unsquared, in units of the normalised cloud's RMS radius);
+  geometric metric; symmetric, unsquared, the sum of the two directed mean distances, in units of the normalised
+  cloud's RMS radius; both shapes are compared through their EVAL_DENSE samples, whose discretisation floor
+  `chamfer_floor` measures);
 - residual: mean distance from the observed points to the predicted shape;
 - when the family is right: unsigned axis angle error (degrees) and |log scale ratio|.
 """
@@ -47,6 +49,39 @@ def shape_metrics(pred_fi: list[int], raws: list[torch.Tensor], batch: dict) -> 
                     rec["axis_err_deg"] = math.degrees(math.acos(c))
                 rec["logscale_err"] = float((logscale[j] - batch["gt_logscale"][i]).abs())
             out[i] = rec
+    return out
+
+
+@torch.no_grad()
+def chamfer_floor(n_shapes: int = 64, sigma: float = 0.01, seed: int = 0, fine: int = 16) -> dict:
+    """Discretisation floor of the evaluation Chamfer distance (post hoc, audit 2026-11-22; geometry only, no model).
+
+    The metric compares EVAL_DENSE samples of the predicted and of the ground-truth shape, so a geometrically perfect
+    prediction need not score 0. For every curve and surface family, `n_shapes` ground-truth shapes are drawn as the
+    generator draws them (label margins at relative noise `sigma`) and scaled to RMS radius 1, then:
+      vs_fine:      CD(evaluation samples, `fine` x as many samples of the same shape): one evaluation grid against
+                    (nearly) the continuous shape;
+      vs_symmetric: CD between the evaluation samples of two equivalent parameterisations of the same shape (the family's
+                    listed symmetries, e.g. a sphere, cone or torus rotated by 1 rad about its axis); this is what a perfect
+                    prediction scores when its parameterisation differs from the ground truth's.
+    Medians over shapes. Point sets (exact vertices) and the blob (a fixed set of Gaussian draws) have no grid."""
+    from neurogeom.seeding import make_generator
+    gen = make_generator(seed)
+    dense_fine = {"curve": EVAL_DENSE["curve"] * fine, "surface_side": int(EVAL_DENSE["surface_side"] * fine ** 0.5), "blob": EVAL_DENSE["blob"]}
+    out = {}
+    for f in FAMILIES:
+        if not f.posed or f.name == "blob":
+            continue
+        vf, vs = [], []
+        for _ in range(max(1, n_shapes // 8)):                         # batches of 8 keep the (8, M, 16 M) distances small
+            p = f.sample_valid(8, gen, torch.full((8,), sigma), "cpu")
+            p = f.transform(p, torch.eye(3).expand(8, 3, 3), torch.zeros(8, 3), 1.0 / f.rms_radius(p))   # RMS radius 1
+            c, wc = f.dense(p, EVAL_DENSE)
+            vf += chamfer(c, wc, *f.dense(p, dense_fine)).tolist()
+            for q in f.symmetries(p):
+                vs += chamfer(c, wc, *f.dense(q, EVAL_DENSE)).tolist()
+        med = lambda v: float(torch.tensor(v).quantile(0.5))          # interpolated median, as numpy's
+        out[f.name] = {"coarse": f.coarse, "vs_fine": med(vf), "vs_symmetric": med(vs) if vs else None, "n": len(vf)}
     return out
 
 
