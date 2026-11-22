@@ -1,0 +1,183 @@
+{
+  "synthetic": {
+    "A3_norefine": {
+      "n": 39000,
+      "fine_acc": 0.878948717948718,
+      "median_chamfer": 0.15932678431272507,
+      "macro_f1": 0.8792419885942817
+    },
+    "A5_gaic": {
+      "n": 39000,
+      "fine_acc": 0.6456923076923077,
+      "median_chamfer": 0.18230211734771729,
+      "macro_f1": 0.6271699937585906
+    },
+    "A5_hybrid": {
+      "n": 39000,
+      "fine_acc": 0.855974358974359,
+      "median_chamfer": 0.1568642407655716,
+      "macro_f1": 0.8578270506529275
+    },
+    "B1_classical": {
+      "n": 3120,
+      "fine_acc": 0.5224358974358975,
+      "median_chamfer": 0.20949868112802505,
+      "macro_f1": 0.49934948187472644
+    },
+    "B1_fixed": {
+      "n": 3120,
+      "fine_acc": 0.5400641025641025,
+      "median_chamfer": 0.21497032791376114,
+      "macro_f1": 0.5353863823793578
+    },
+    "B2_features": {
+      "n": 3120,
+      "fine_acc": 0.6448717948717949,
+      "median_chamfer": 0.2371051385998726,
+      "macro_f1": 0.6449230152340804
+    },
+    "B3a_null": {
+      "n": 3120,
+      "fine_acc": 0.07692307692307693,
+      "median_chamfer": 0.542736828327179,
+      "macro_f1": 0.010989010989010988
+    },
+    "B3b_circle": {
+      "n": 3120,
+      "fine_acc": 0.07692307692307693,
+      "median_chamfer": 0.5451793074607849,
+      "macro_f1": 0.010989010989010988
+    },
+    "B3c_random": {
+      "n": 3120,
+      "fine_acc": 0.07916666666666666,
+      "median_chamfer": 1.1162693500518799,
+      "macro_f1": 0.07908488688447578
+    },
+    "method": {
+      "n": 39000,
+      "fine_acc": 0.878948717948718,
+      "median_chamfer": 0.15607212483882904,
+      "macro_f1": 0.8792419885942817
+    },
+    "_design": {
+      "duplicate_rows": 0,
+      "n_chunks": 1560,
+      "N_constant_within_chunk": true,
+      "embedding_constant_within_chunk": true,
+      "family_constant_within_chunk": true,
+      "true_family_identical_across_systems": true
+    }
+  },
+  "H3": {
+    "agree": 7,
+    "n": 12,
+    "p_permutation": 0.12517,
+    "permutations": 200000,
+    "clopper_pearson": [
+      0.2766696856821058,
+      0.8483477701915698
+    ]
+  },
+  "real_claims": {
+    "R9_rms_spread": {
+      "false": 1.4035050395736628,
+      "true": 0.8886413127714752,
+      "ratio_false_over_true": 1.5793830642381927
+    },
+    "R5a_llama_weekdays_token_clusters": {
+      "n_tokens": 7,
+      "between_over_within_rms": 13.173096118312776
+    },
+    "R5b_llama_months_token_clusters": {
+      "n_tokens": 12,
+      "between_over_within_rms": 27.653840997282924
+    },
+    "C3_llama_weekdays_init_token_clusters": {
+      "n_tokens": 7,
+      "between_over_within_rms": 9.854417442016205
+    },
+    "C3_llama_months_init_token_clusters": {
+      "n_tokens": 12,
+      "between_over_within_rms": 7.528465316296532
+    },
+    "C3_llama_counting_init": {
+      "farthest_counts": [
+        1,
+        2,
+        15
+      ],
+      "farthest_dist": [
+        62.14717823509467,
+        46.19431187087783,
+        9.09322533198892
+      ],
+      "median_dist": 2.0102166322744637,
+      "max_dist_fitted_centroid_to_nearest_point": 0.006413189962441759
+    },
+    "R8b_largest_jumps": {
+      "pairs": [
+        [
+          29,
+          30
+        ],
+        [
+          30,
+          31
+        ],
+        [
+          34,
+          35
+        ],
+        [
+          39,
+          40
+        ],
+        [
+          40,
+          41
+        ],
+        [
+          49,
+          50
+        ],
+        [
+          50,
+          51
+        ],
+        [
+          59,
+          60
+        ]
+      ],
+      "median_jump": 0.753840466249257
+    },
+    "R1_point_to_fitted_sphere": {
+      "median": 0.021615379883956898,
+      "q90": 0.07295978833484087,
+      "radius": 3.2000861167907715
+    },
+    "R3_tms_n6_offdiag_cosines": [
+      -1.0,
+      -0.002,
+      -0.001,
+      -0.0,
+      0.001,
+      0.002
+    ],
+    "helix_fit_handedness": {
+      "C1_gp_0": "left",
+      "C1_gp_2": "left",
+      "C1_gp_3": "left",
+      "C1_gp_5": "left",
+      "C1_gp_6": "left",
+      "C1_gp_7": "left",
+      "C1_gp_8": "left",
+      "C1_gp_9": "left",
+      "R2_grokking_WE": "left",
+      "R5a_llama_weekdays": "left",
+      "R5b_llama_months": "left",
+      "R5b_llama_months_means": "left"
+    }
+  }
+}
