@@ -19,10 +19,10 @@ The expected labels were fixed in the [preregistration](preregistration.md) befo
 | R2 | Token embeddings W_E of a 1-layer transformer trained here on (a+b) mod 113 until it grokked | trained from scratch with the architecture and optimizer of [Nanda et al. 2023](https://arxiv.org/abs/2301.05217), 25,000 instead of 40,000 epochs | circle or ellipse |
 | R3 | Columns of W in toy models of superposition with 3 hidden dimensions and 6 or 8 features (both counted in H3) | trained here ([Elhage et al. 2022](https://transformer-circuits.pub/2022/toy_model/index.html)) | polytope or clusters |
 | R4 | Mean activation per "characters since the last newline" | Llama-3.1-8B, layer 5 | helix ([Gurnee et al. 2025](https://transformer-circuits.pub/2025/linebreaks/index.html); Llama replication by [Sinii & Balagansky 2026](https://t-tech-manifolds.hf.space/)) |
-| R5a, R5b | Weekday and month tokens in Engels et al.'s arithmetic prompts (our weekday prompt says "days of the week math" where theirs says "day of the week math") | Llama-3.1-8B, layer 5 | circle ([Engels et al. 2024](https://arxiv.org/abs/2405.14860)) |
-| R6 | Years, "The date is year {Y}", last token | Llama-3.1-8B, layer 19 | helix ([Bhalla et al. 2026](https://arxiv.org/abs/2604.28119)) |
+| R5a, R5b | Weekday and month tokens in Engels et al.'s arithmetic prompts (our weekday prompt says "days of the week math" where theirs says "day of the week math") | Llama-3.1-8B, layer 5 | circle ([Engels et al. 2024](https://arxiv.org/abs/2405.14860); their Fig. 4 shows Mistral-7B layer 30 for weekdays and Llama-3-8B layer 5 for months, and App. Fig. 18 shows both tasks at every layer of both models) |
+| R6 | Years, "The date is year {Y}", last token | Llama-3.1-8B, layer 19 | helix (Table 1 label of [Bhalla et al. 2026](https://arxiv.org/abs/2604.28119); their 3D PCA view of years, Fig. 2, is a broad cloud) |
 | R7 | Colors, "The hex code {h} is for the color", last token | Llama-3.1-8B, layer 19 | paraboloid ([Bhalla et al. 2026](https://arxiv.org/abs/2604.28119)) |
-| R8a, R8b | Temperature and age templates, last token | Llama-3.1-8B, layer 19 | line ([Bhalla et al. 2026](https://arxiv.org/abs/2604.28119)) |
+| R8a, R8b | Temperature and age templates, last token | Llama-3.1-8B, layer 19 | line (Table 1 label of [Bhalla et al. 2026](https://arxiv.org/abs/2604.28119); in their Fig. 2 PCA views temperature is an arch and age a hooked curve) |
 | R9 | True and false city statements, last token | Llama-3.1-8B, layer 12 | clusters ([Marks & Tegmark 2024](https://arxiv.org/abs/2310.06824), who report the two classes separating in the top-2 PCs of LLaMA-2) |
 | C1 | Gaussian processes and random walks over an ordinal index in R^768 | none | ringing |
 | C2 | A Gaussian with the same mean and covariance as each R dataset | none | blob |
@@ -120,7 +120,7 @@ These notes interpret the tables above. Every number they rely on is in a genera
    - Applied post hoc to every full-cloud helix fit with held-out folds, the same rule **accepts** helix for the grokked embeddings, weekdays, months and month means (the "Helix rule" headline line), all described as circles in the literature. The rule separates a helix from PCA ringing, not from a circle or from clusters threaded by a helix.
    - **Learning:** the classifier alone is not enough to claim a helix; the held-out check against ringing is necessary, and a check against circles and clusters is also needed.
 6. **Randomly initialised networks are not structureless.**
-   - The preregistered expectation for C3 (random-init Llama) was *blob*. The fitter instead reports point sets (*clusters* for months and counting, *polytope* for weekdays). For months and weekdays [fig_controls](../docs/figures/fig_controls.png) shows real clusters, one per input token. The counting control is a single streak plus one isolated point; its cluster fit is degenerate (centroids away from the data) and is flagged OOD.
+   - The preregistered expectation for C3 (random-init Llama) was *blob*. The fitter instead reports point sets (*clusters* for months and counting, *polytope* for weekdays). For months and weekdays [fig_controls](../docs/figures/fig_controls.png) shows real clusters, one per input token. The counting control is a compact streak plus two isolated points, the means for character counts 1 and 2. Its three fitted centroids sit on the streak and on the two isolated points, and the cloud is flagged OOD. (Corrected in the 2026-11-22 audit: this line had said one isolated point and centroids away from the data.)
    - A randomly initialised transformer still separates token identities, so the C3 expectation was wrong, not the fitter.
    - Random-init GPT-2 positional embeddings and the untrained grokking embeddings are blobs, as expected. They are i.i.d. random weight rows; no forward pass could separate token identities.
 7. **Ordinal variables give ringing, not lines.**
@@ -128,7 +128,7 @@ These notes interpret the tables above. Every number they rely on is in a genera
    - That agrees at the coarse level with the literature's "line".
    - Age (R8b) is not one smooth curve: ordered by age, consecutive points jump apart around round decade values. It gets *clusters* and the OOD flag.
 8. **The clusters family assumes clusters of equal, round spread.**
-   - True and false city statements (R9) form two overlapping clouds of very different shape, one narrow and one broad.
+   - True and false city statements (R9) form two overlapping clouds of unequal spread: the false statements are spread more widely than the true ones.
    - That is out of distribution for the clusters family. The fit is a curve and the OOD flag is set.
 9. **An extraction artifact, found by looking at outliers and fixed (post hoc, exploratory dataset only).**
    - In the first Pythia counting cloud (R4b), the count-1 mean lay 50× the median distance from the centre.
