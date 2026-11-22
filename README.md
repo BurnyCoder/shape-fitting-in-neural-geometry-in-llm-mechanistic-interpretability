@@ -1,7 +1,7 @@
 # Fitting geometric shapes to neural geometry
 
 **Status:** first trained model (`main_s0`) evaluated with its controls and baselines. Postponed to later stages: trained ablations, more models, and seed and hyperparameter sweeps ([deviations](reports/deviations.md)).
-**Links:** [paper (PDF)](paper/main.pdf) · [interactive explorer](https://burnycoder.github.io/geometrical-shape-fitting-in-llm-mechanistic-interpretability/) · [model on Hugging Face](https://huggingface.co/BurnyCoder/neurogeom-shape-fitter-main-s0) · [summary of all experiments](reports/summary.md)
+**Links:** [paper (PDF)](paper/main.pdf) · [interactive explorer](https://burnycoder.github.io/shape-fitting-in-neural-geometry-in-llm-mechanistic-interpretability/) · [model on Hugging Face](https://huggingface.co/BurnyCoder/neurogeom-shape-fitter-main-s0) · [summary of all experiments](reports/summary.md)
 
 Interpretability research keeps finding **low-dimensional shapes** in the activations of neural networks:
 - circles for weekdays and months ([Engels et al. 2024](https://arxiv.org/abs/2405.14860));
