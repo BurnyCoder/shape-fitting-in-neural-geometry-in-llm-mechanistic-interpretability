@@ -1,7 +1,8 @@
 """1D shape families: line segment, circle/arc, closed ellipse, helix, ringing (PCA-horseshoe) curve.
 
 Global context: curves are the most frequently reported neural geometries (circles for days/months,
-helices for positions/counts, lines for temperature/age). Each family defines its local curve around
+helices for positions/counts, lines for temperature/age as labelled in Bhalla et al.'s dataset table, although
+their PCA views show bent curves). Each family defines its local curve around
 the origin in the frame (e1, e2, e3); base.ShapeFamily handles pose, encoding and transforms.
 Empirical anchors per family are listed in src/neurogeom/catalog/catalog.yaml.
 """
